@@ -1,0 +1,6 @@
+[
+  { "name": "01-cover.jpg", "scene": "cover", "query": "?shot=cover" },
+  { "name": "02-drive.jpg", "scene": "drive", "query": "?shot=drive" },
+  { "name": "03-mission.jpg", "scene": "mission", "query": "?shot=mission" },
+  { "name": "04-map.jpg", "scene": "map", "query": "?shot=map" }
+]

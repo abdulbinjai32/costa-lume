@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="icon" href="data:," />
+<title>Costa Lume</title>
+<style>
+  :root {
+    --ink: #f4efe4;
+    --gold: #e8b96b;
+    --gold-dim: #a8874c;
+    --plate: rgba(8, 14, 23, 0.80);
+    --plate-solid: rgba(8, 14, 23, 0.93);
+    --teal: #4fb8ad;
+    --danger: #e2643f;
+    --armour: #63b6e6;
+  }
+  * { box-sizing: border-box; }
+  .hidden { display: none !important; }
+  html, body {
+    margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
+    background: #0a0f16; color: var(--ink);
+    font-family: "Inter", "Helvetica Neue", "Liberation Sans", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    cursor: default;
+  }
+  #view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+
+  /* warm, slightly dirty optical edge so the frame reads as a photograph — kept light: the corners
+     must not swallow the street when the shot is shrunk to a thumbnail */
+  #vignette {
+    position: fixed; inset: 0; pointer-events: none; z-index: 5;
+    background:
+      radial-gradient(ellipse at 52% 46%, rgba(0,0,0,0) 54%, rgba(20,12,4,0.16) 84%, rgba(12,8,3,0.34) 100%),
+      linear-gradient(to bottom, rgba(255,196,120,0.05), rgba(0,0,0,0) 26%);
+    mix-blend-mode: multiply;
+  }
+
+  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
+  #hud.hidden { display: none; }
+
+  .plate {
+    background: var(--plate);
+    border-left: 2px solid var(--gold);
+    padding: 9px 13px 10px 12px;
+    box-shadow: 0 10px 26px rgba(0,0,0,0.28);
+  }
+  .label {
+    font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--gold); font-weight: 700; opacity: 1;
+    text-shadow: 0 1px 2px rgba(4,8,14,0.8);
+  }
+
+  /* ---- top left: mission ---- */
+  #mission {
+    position: absolute; top: 26px; left: 26px; width: 336px;
+  }
+  #mission-title {
+    font-size: 17px; font-weight: 700; letter-spacing: 0.015em;
+    margin: 4px 0 3px; color: #fff8ea;
+  }
+  #mission-obj {
+    font-size: 12.5px; line-height: 1.35; color: #e8e1d3;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+
+  /* ---- top right: money, stars, minimap ---- */
+  #topright { position: absolute; top: 26px; right: 26px; width: 214px; }
+  #moneyplate { display: flex; align-items: baseline; justify-content: space-between; }
+  #money {
+    font-size: 25px; font-weight: 700; letter-spacing: 0.01em; color: #fff6e2;
+    font-variant-numeric: tabular-nums; line-height: 1;
+  }
+  #stars { display: flex; gap: 3px; margin-top: 7px; }
+  .star {
+    width: 16px; height: 16px; display: block;
+    background: rgba(255,255,255,0.34);
+    filter: drop-shadow(0 1px 2px rgba(4,8,14,0.95));
+    clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+    transition: background 120ms linear;
+  }
+  .star.on { background: var(--gold); box-shadow: 0 0 12px rgba(232,185,107,0.80); filter: drop-shadow(0 1px 2px rgba(4,8,14,0.95)); }
+
+  #mapwrap {
+    position: relative; margin-top: 11px; width: 190px; height: 190px;
+    border: 1px solid rgba(232,185,107,0.75);
+    background: #08131d; box-shadow: 0 10px 26px rgba(0,0,0,0.42), inset 0 0 0 1px rgba(4,10,18,0.9);
+  }
+  #minimap { display: block; width: 190px; height: 190px; }
+  #map-n {
+    position: absolute; top: 3px; left: 50%; transform: translateX(-50%);
+    font-size: 10px; letter-spacing: 0.16em; font-weight: 700; color: rgba(255,248,234,0.96);
+    text-shadow: 0 1px 3px rgba(4,8,14,0.95);
+  }
+  #district {
+    position: absolute; bottom: 3px; left: 6px; font-size: 9.5px; font-weight: 600;
+    letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,211,142,0.98);
+    text-shadow: 0 1px 3px rgba(4,8,14,0.95);
+  }
+
+  /* ---- bottom left: vitals ---- */
+  #vitals { position: absolute; bottom: 26px; left: 26px; width: 232px; }
+  .bar { position: relative; height: 9px; background: rgba(255,255,255,0.13); margin-top: 5px; overflow: hidden; }
+  .bar > i { position: absolute; inset: 0 auto 0 0; display: block; width: 100%; }
+  #health-fill { background: linear-gradient(90deg, #d8532f, #f08a52); }
+  #armour-fill { background: linear-gradient(90deg, #3f8cb8, #7fcdf0); }
+  #vitals .row { display: flex; justify-content: space-between; align-items: baseline; margin-top: 7px; }
+  #weapon { font-size: 13px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; }
+  #ammo { font-size: 13px; color: var(--gold); font-variant-numeric: tabular-nums; letter-spacing: 0.06em; }
+
+  /* ---- bottom right: speed + radio ---- */
+  #drive { position: absolute; bottom: 26px; right: 26px; text-align: right; }
+  #speed { font-size: 34px; font-weight: 700; line-height: 0.9; color: #fff7e6; font-variant-numeric: tabular-nums; }
+  #speed small { font-size: 10px; letter-spacing: 0.18em; color: var(--gold); margin-left: 5px; font-weight: 600; }
+  #radio { margin-top: 6px; font-size: 10.5px; letter-spacing: 0.16em; color: #f0e6d2; text-transform: uppercase;
+    text-shadow: 0 1px 3px rgba(4,8,14,0.9); font-weight: 600; }
+  #sound {
+    position: absolute; bottom: 8px; right: 26px; font-size: 9px; letter-spacing: 0.16em;
+    color: rgba(240,230,210,0.55); text-transform: uppercase; text-shadow: 0 1px 3px rgba(4,8,14,0.9);
+  }
+
+  /* ---- centre prompts and toasts ---- */
+  #prompt {
+    position: absolute; bottom: 108px; left: 50%; transform: translateX(-50%);
+    padding: 8px 16px; font-size: 13px; letter-spacing: 0.02em;
+    background: var(--plate-solid); border: 1px solid rgba(232,185,107,0.5);
+    opacity: 0; transition: opacity 140ms linear; white-space: nowrap;
+  }
+  #prompt.show { opacity: 1; }
+  #prompt b { color: var(--gold); }
+
+  #toasts {
+    position: absolute; bottom: 150px; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 6px; width: 620px;
+  }
+  .toast {
+    padding: 7px 15px; font-size: 13px; line-height: 1.3; color: #fff6e4;
+    background: rgba(9,16,26,0.78); border-left: 2px solid var(--teal);
+    animation: toastIn 240ms ease-out both;
+    max-width: 620px;
+  }
+  .toast b { color: var(--teal); font-weight: 700; }
+  @keyframes toastIn { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
+
+  /* ---- boot line ---- */
+  #boot {
+    position: absolute; left: 50%; bottom: 58px; transform: translateX(-50%);
+    font-size: 11px; letter-spacing: 0.26em; text-transform: uppercase; color: rgba(244,239,228,0.72);
+  }
+  #boot::after {
+    content: ""; display: block; margin: 9px auto 0; width: 168px; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 0.25; } 50% { opacity: 1; } }
+  #boot.done { display: none; }
+
+  /* ---- menus ---- */
+  .screen {
+    position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column;
+    justify-content: center; padding-left: 8vw;
+    background: linear-gradient(100deg, rgba(6,10,16,0.90) 0%, rgba(6,10,16,0.62) 48%, rgba(6,10,16,0.05) 78%);
+  }
+  .screen.hidden { display: none; }
+  #pause { background: rgba(6,10,16,0.80); justify-content: center; align-items: center; padding-left: 0; }
+  .kicker { font-size: 10px; letter-spacing: 0.4em; text-transform: uppercase; color: var(--gold); }
+  #title {
+    font-size: 82px; line-height: 0.92; font-weight: 800; letter-spacing: -0.02em;
+    margin: 12px 0 6px; color: #fff7e6; text-shadow: 0 6px 40px rgba(0,0,0,0.55);
+  }
+  #title span { color: var(--gold); }
+  #tagline { font-size: 13px; letter-spacing: 0.13em; text-transform: uppercase; color: #d4c9b6; }
+  #story { margin: 22px 0 26px; max-width: 430px; font-size: 14px; line-height: 1.55; color: #cdc6b8; }
+  .menu-actions { display: flex; flex-direction: column; gap: 9px; width: 300px; }
+  .btn {
+    pointer-events: auto; cursor: pointer; text-align: left;
+    padding: 12px 16px; font-size: 13px; letter-spacing: 0.15em; text-transform: uppercase;
+    color: #fdf7ea; background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.14); border-left: 2px solid var(--gold-dim);
+    font-family: inherit; font-weight: 600;
+    transition: background 120ms linear, border-color 120ms linear, transform 90ms ease;
+  }
+  .btn:hover { background: rgba(232,185,107,0.15); border-color: rgba(232,185,107,0.75); }
+  .btn:active { transform: translateY(1px); }
+  .btn small { display: block; margin-top: 4px; font-size: 10.5px; letter-spacing: 0.05em;
+    text-transform: none; color: #a9a292; font-weight: 400; }
+  #controls {
+    display: none; margin-top: 14px; width: 424px; font-size: 12px; color: #c8c1b3;
+    background: rgba(9,16,26,0.7); border-left: 2px solid var(--gold); padding: 12px 14px;
+  }
+  #controls.show { display: block; }
+  #controls div { display: flex; justify-content: space-between; gap: 18px; padding: 3px 0; }
+  #controls b { color: var(--gold); font-weight: 600; letter-spacing: 0.08em; }
+  #pause-title { font-size: 34px; font-weight: 800; letter-spacing: 0.2em; margin: 0 0 18px; }
+  #pause .menu-actions { width: 300px; }
+  #shot-hint { position: fixed; right: 12px; bottom: 8px; font-size: 9px; color: rgba(255,255,255,0.22); z-index: 30; }
+
+  /* ---- full map overlay (Tab) ---- */
+  #mapoverlay {
+    position: fixed; inset: 0; z-index: 22; display: flex; align-items: center; justify-content: center;
+    gap: 26px; padding: 24px; background: rgba(5,9,14,0.93);
+  }
+  #mapoverlay.hidden { display: none; }
+  #map-plate { border: 1px solid rgba(232,185,107,0.7); background: #08131d; box-shadow: 0 18px 50px rgba(0,0,0,0.6); }
+  #map-canvas { display: block; width: 660px; height: 584px; }
+  #map-side { width: 372px; align-self: stretch; display: flex; flex-direction: column; justify-content: center; gap: 14px; }
+  #map-head { font-size: 11px; letter-spacing: 0.34em; text-transform: uppercase; color: var(--gold); }
+  #map-title { font-size: 40px; font-weight: 800; letter-spacing: -0.01em; margin: 2px 0 4px; color: #fff7e6; }
+  #map-meta { font-size: 13px; color: #cdc6b8; font-variant-numeric: tabular-nums; }
+  #map-list { display: flex; flex-direction: column; gap: 3px; margin: 4px 0 2px; }
+  .map-job { display: flex; align-items: baseline; gap: 10px; padding: 6px 10px; font-size: 12.5px;
+    color: #b7b0a2; background: rgba(255,255,255,0.03); border-left: 2px solid rgba(232,185,107,0.25); }
+  .map-job.done { color: #d8f0e8; border-left-color: var(--teal); }
+  .map-job.live { color: #fff6e2; border-left-color: var(--gold); background: rgba(232,185,107,0.10); }
+  .map-job-mark { width: 12px; color: var(--gold); }
+  .map-job-name { flex: 1; }
+  .map-job-cash { color: var(--gold); font-variant-numeric: tabular-nums; }
+  #map-waypoint { font-size: 11.5px; letter-spacing: 0.02em; color: #9fb7bd; line-height: 1.5; }
+  #map-legend { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #7d8791; }
+</style>
+</head>
+<body>
+<canvas id="view"></canvas>
+<div id="vignette"></div>
+
+<div id="hud" class="hidden">
+  <div id="mission" class="plate">
+    <div class="label">Mission</div>
+    <div id="mission-title">Boardwalk Shake</div>
+    <div id="mission-obj">Collect the money from the boardwalk stalls</div>
+  </div>
+
+  <div id="topright">
+    <div id="moneyplate" class="plate">
+      <div>
+        <div class="label">Cash</div>
+        <div id="money">$0</div>
+      </div>
+    </div>
+    <div id="stars">
+      <i class="star"></i><i class="star"></i><i class="star"></i><i class="star"></i><i class="star"></i>
+    </div>
+    <div id="mapwrap">
+      <canvas id="minimap" width="380" height="380"></canvas>
+      <div id="map-n">N</div>
+      <div id="district">Playa Norte</div>
+    </div>
+  </div>
+
+  <div id="vitals" class="plate">
+    <div class="label">Vitals</div>
+    <div class="bar"><i id="health-fill"></i></div>
+    <div class="bar"><i id="armour-fill" style="width:50%"></i></div>
+    <div class="row"><span id="weapon">Fists</span><span id="ammo">—</span></div>
+  </div>
+
+  <div id="drive">
+    <div id="speed">0<small>KM/H</small></div>
+    <div id="radio">Radio Sol</div>
+  </div>
+  <div id="sound">Sound on · M</div>
+
+  <div id="prompt"></div>
+  <div id="toasts"></div>
+  <div id="boot">Preparing Costa Lume</div>
+</div>
+
+<div id="start" class="screen">
+  <div class="kicker">Costa Lume · Playa Norte</div>
+  <h1 id="title">COSTA<br /><span>LUME</span></h1>
+  <div id="tagline">A sun-soaked crime sandbox</div>
+  <p id="story">
+    Rafa Duarte fixes boat engines for a living and owes the Vela crew money he cannot pay.
+    Mira Solano has work. The sun is going down over Playa Norte.
+  </p>
+  <div class="menu-actions">
+    <button id="btn-continue" class="btn hidden">Continue<small>Resume the last saved job</small></button>
+    <button id="btn-new" class="btn">New game<small>Start on the Playa Norte boulevard</small></button>
+    <button id="btn-controls" class="btn">Controls<small>Keyboard and mouse</small></button>
+  </div>
+  <div id="controls"></div>
+</div>
+
+<div id="mapoverlay" class="hidden">
+  <div id="map-plate"><canvas id="map-canvas" width="660" height="584"></canvas></div>
+  <div id="map-side">
+    <div id="map-head">Costa Lume · map</div>
+    <div id="map-title">The city</div>
+    <div id="map-meta">$250 · 0/5 jobs</div>
+    <div id="map-list"></div>
+    <div id="map-waypoint">Click the map to drop a waypoint. Tab or Esc returns to the street.</div>
+    <div id="map-legend">Gold diamond · current objective &nbsp; Teal flag · your waypoint</div>
+  </div>
+</div>
+
+<div id="pause" class="screen hidden">
+  <div id="pause-title">PAUSED</div>
+  <div class="menu-actions">
+    <button id="btn-resume" class="btn">Resume<small>Back to the street</small></button>
+    <button id="btn-save" class="btn">Save game<small>Writes cash and progress now</small></button>
+    <button id="btn-retry" class="btn">Restart mission<small>Back to this job's marker</small></button>
+    <button id="btn-controls2" class="btn">Controls<small>Keyboard and mouse</small></button>
+    <button id="btn-menu" class="btn">Quit to title<small>Progress is saved at every job</small></button>
+  </div>
+  <div id="controls2" class="panel"></div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "/vendor/three.module.min.js"
+  }
+}
+</script>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
